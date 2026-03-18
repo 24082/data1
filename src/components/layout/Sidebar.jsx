@@ -29,14 +29,19 @@ export default function Sidebar() {
         setOpenDropdown((prev) => (prev === name ? null : name));
     };
 
-    const getAllowedMenus = () => {
-        const userModules = JSON.parse(localStorage.getItem("modules")) || [];
+  const getAllowedMenus = () => {
+    try {
+        const raw = localStorage.getItem("modules");
+        const userModules = (raw && raw !== "undefined") ? JSON.parse(raw) : [];
         console.log(userModules);
-
         return CONSTANT.MENUS.filter(menu =>
             !menu.permission || userModules.includes(menu.permission)
         );
-    };
+    } catch (e) {
+        console.error("Failed to parse modules", e);
+        return CONSTANT.MENUS.filter(menu => !menu.permission);
+    }
+};
 
     const menus = getAllowedMenus();
 

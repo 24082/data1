@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import CountUp from "react-countup";
 import api from "../services/httpService";
-import { ShoppingCart, Package, Calendar, Zap, CalendarDays, MapPin, TrendingUp, BarChart2 } from "lucide-react";
+import { ShoppingCart, Package, Calendar, Zap, CalendarDays, MapPin, TrendingUp, BarChart2, Tag, LayoutGrid } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
@@ -47,8 +47,11 @@ const Dashboard = () => {
       const params = new URLSearchParams();
       params.append("date", today);
       if (locationId) params.append("locationId", locationId);
-      const res = await api.get(`/api/dashboard?${params.toString()}`);
+
+      // ✅ FIXED API URL
+      const res = await api.get(`/api/dashboard/getAllDashboard?${params.toString()}`);
       const dashboardData = res.data?.data;
+
       if (dashboardData) {
         setStats(dashboardData);
         setMonthlyData(convertMonthlyData(dashboardData.monthlyProductSales));
@@ -62,6 +65,7 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => { fetchLocations(); }, [fetchLocations]);
+
   useEffect(() => {
     if (selectedLocation !== undefined) fetchDashboard(selectedLocation);
   }, [selectedLocation, fetchDashboard]);
@@ -71,13 +75,13 @@ const Dashboard = () => {
     setSelectedLocation(value === "all" ? null : value);
   };
 
+  // ✅ Added totalAddons and totalCategories from your API response
   const statCards = [
     {
       label: "Today's Orders",
       value: stats?.today?.totalOrders || 0,
       color: "border-orange-400",
       labelColor: "text-orange-500",
-      bg: "bg-orange-50",
       iconBg: "bg-orange-100",
       icon: <Zap className="w-6 h-6 text-orange-500" />,
       decimals: 0,
@@ -87,7 +91,6 @@ const Dashboard = () => {
       value: stats?.today?.totalAmount || 0,
       color: "border-red-400",
       labelColor: "text-red-500",
-      bg: "bg-red-50",
       iconBg: "bg-red-100",
       icon: <Calendar className="w-6 h-6 text-red-500" />,
       decimals: 2,
@@ -97,7 +100,6 @@ const Dashboard = () => {
       value: stats?.totalOrders || 0,
       color: "border-blue-400",
       labelColor: "text-blue-600",
-      bg: "bg-blue-50",
       iconBg: "bg-blue-100",
       icon: <ShoppingCart className="w-6 h-6 text-blue-600" />,
       decimals: 0,
@@ -107,7 +109,6 @@ const Dashboard = () => {
       value: stats?.totalProducts || 0,
       color: "border-green-400",
       labelColor: "text-green-600",
-      bg: "bg-green-50",
       iconBg: "bg-green-100",
       icon: <Package className="w-6 h-6 text-green-600" />,
       decimals: 0,
@@ -117,25 +118,48 @@ const Dashboard = () => {
       value: stats?.currentMonth?.totalAmount || 0,
       color: "border-purple-400",
       labelColor: "text-purple-600",
-      bg: "bg-purple-50",
       iconBg: "bg-purple-100",
       icon: <CalendarDays className="w-6 h-6 text-purple-600" />,
       decimals: 2,
     },
+    {
+      label: "Total Addons",
+      value: stats?.totalAddons || 0,
+      color: "border-yellow-400",
+      labelColor: "text-yellow-600",
+      iconBg: "bg-yellow-100",
+      icon: <Tag className="w-6 h-6 text-yellow-600" />,
+      decimals: 0,
+    },
+    {
+      label: "Total Categories",
+      value: stats?.totalCategories || 0,
+      color: "border-pink-400",
+      labelColor: "text-pink-600",
+      iconBg: "bg-pink-100",
+      icon: <LayoutGrid className="w-6 h-6 text-pink-600" />,
+      decimals: 0,
+    },
   ];
 
   const pieData = [
-    { label: "Today's Sales", value: stats?.today?.totalOrders || 0, color: "#ef4444" },
-    { label: "Monthly Sales", value: stats?.currentMonth?.totalOrders || 0, color: "#9333ea" },
-    { label: "Overall Sales", value: stats?.overall?.totalOrders || 0, color: "#3b82f6" },
+    { label: "Today's Orders", value: stats?.today?.totalOrders || 0 },
+    { label: "Monthly Orders", value: stats?.currentMonth?.totalOrders || 0 },
+    { label: "Overall Orders", value: stats?.overall?.totalOrders || 0 },
   ].filter(item => item.value > 0);
 
   if (error) {
     return (
       <div className="p-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-4">Dashboard</h1>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center justify-between">
           <p className="text-red-600 font-medium">{error}</p>
+          <button
+            onClick={() => fetchDashboard(selectedLocation)}
+            className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 transition"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -177,7 +201,7 @@ const Dashboard = () => {
       ) : (
         <>
           {/* Stat Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {statCards.map((item, index) => (
               <div
                 key={index}
@@ -203,6 +227,28 @@ const Dashboard = () => {
             ))}
           </div>
 
+          {/* Summary Row - Overall Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+              <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Overall Orders</p>
+              <p className="text-2xl font-bold text-gray-800">
+                <CountUp end={stats?.overall?.totalOrders || 0} duration={1.5} separator="," />
+              </p>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+              <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Overall Sales (₹)</p>
+              <p className="text-2xl font-bold text-gray-800">
+                <CountUp end={stats?.overall?.totalAmount || 0} duration={1.5} separator="," decimals={2} />
+              </p>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+              <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Avg Order Value (₹)</p>
+              <p className="text-2xl font-bold text-gray-800">
+                <CountUp end={stats?.overall?.averageOrderValue || 0} duration={1.5} separator="," decimals={2} />
+              </p>
+            </div>
+          </div>
+
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
@@ -212,21 +258,20 @@ const Dashboard = () => {
                 <BarChart2 className="w-5 h-5 text-blue-600" />
                 <h2 className="text-base font-semibold text-gray-700">Monthly Product Sales</h2>
               </div>
-              {monthlyData.length > 0 ? (
+              {monthlyData.some(d => d.quantity > 0) ? (
                 <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={monthlyData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip
-                      contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
-                    />
+                    <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }} />
                     <Bar dataKey="quantity" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Products Sold" />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
-                  No monthly data available
+                <div className="flex flex-col items-center justify-center h-40 text-gray-400 text-sm gap-2">
+                  <BarChart2 className="w-10 h-10 text-gray-300" />
+                  <p>No monthly sales data yet</p>
                 </div>
               )}
             </div>
@@ -235,7 +280,7 @@ const Dashboard = () => {
             <div className="bg-white rounded-xl shadow-sm p-6">
               <div className="flex items-center gap-2 mb-4">
                 <TrendingUp className="w-5 h-5 text-purple-600" />
-                <h2 className="text-base font-semibold text-gray-700">Sales Distribution</h2>
+                <h2 className="text-base font-semibold text-gray-700">Orders Distribution</h2>
               </div>
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={280}>
@@ -259,8 +304,9 @@ const Dashboard = () => {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
-                  No sales data available
+                <div className="flex flex-col items-center justify-center h-40 text-gray-400 text-sm gap-2">
+                  <TrendingUp className="w-10 h-10 text-gray-300" />
+                  <p>No orders data yet</p>
                 </div>
               )}
             </div>

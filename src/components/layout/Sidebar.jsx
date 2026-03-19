@@ -1,10 +1,10 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ChevronFirst, ChevronLast, ChevronDown, ChevronRight } from "lucide-react";
 import SidebarItem from "./SidebarItem";
 import { SidebarContext } from "./SidebarContext";
 import CONSTANT from "../../constant/constant";
-import api from "../../services/httpService";
+// Removed api import since we don't need it
 
 export default function Sidebar() {
     const [expanded, setExpanded] = useState(true);
@@ -12,50 +12,37 @@ export default function Sidebar() {
     const contextValue = useMemo(() => ({ expanded }), [expanded]);
     const location = useLocation();
     const navigate = useNavigate();
-    const [imageUrl, setImageUrl] = useState('');
-
-    useEffect(() => {
-        api.get('/v1/temple_setting/one')
-        .then(res => {
-            const data = res.data;
-            setImageUrl(data.temple_image);
-        })
-        .catch(err => {
-            console.error('Failed to load temple info:', err);
-        });
-    }, []);
 
     const toggleDropdown = (name) => {
         setOpenDropdown((prev) => (prev === name ? null : name));
     };
 
-  const getAllowedMenus = () => {
-    try {
-        const raw = localStorage.getItem("modules");
-        const userModules = (raw && raw !== "undefined") ? JSON.parse(raw) : [];
-        console.log(userModules);
-        return CONSTANT.MENUS.filter(menu =>
-            !menu.permission || userModules.includes(menu.permission)
-        );
-    } catch (e) {
-        console.error("Failed to parse modules", e);
-        return CONSTANT.MENUS.filter(menu => !menu.permission);
-    }
-};
+    const getAllowedMenus = () => {
+        try {
+            const raw = localStorage.getItem("modules");
+            const userModules = (raw && raw !== "undefined") ? JSON.parse(raw) : [];
+            console.log(userModules);
+            return CONSTANT.MENUS.filter(menu =>
+                !menu.permission || userModules.includes(menu.permission)
+            );
+        } catch (e) {
+            console.error("Failed to parse modules", e);
+            return CONSTANT.MENUS.filter(menu => !menu.permission);
+        }
+    };
 
     const menus = getAllowedMenus();
 
     return (
-        <aside className="h-screen " role="navigation" aria-label="Main menu">
+        <aside className="h-screen" role="navigation" aria-label="Main menu">
             <nav className="h-full flex flex-col bg-white border-r shadow-sm">
                 <div className="p-4 pb-2 flex justify-between items-center">
                     <div className="flex justify-center items-center w-full">
-                        {expanded && imageUrl && (
-                            <img
-                                src={`${CONSTANT.CLOUDINARY_BASE_URL}/${imageUrl}`}
-                                alt="Temple Logo"
-                                className="w-20 h-12 object-cover border"
-                            />
+                        {expanded && (
+                            <div className="text-xl font-bold text-gray-800">
+                                {/* You can replace this with your app name or logo */}
+                                Admin Panel
+                            </div>
                         )}
                     </div>
                     <button 
@@ -68,8 +55,7 @@ export default function Sidebar() {
                 </div>
 
                 <SidebarContext.Provider value={contextValue}>
-                 <ul className="flex-1 px-3 overflow-y-auto overflow-x-hidden scrollbar-thin">
-                        {/* {CONSTANT.MENUS.map((menu) => { */}
+                    <ul className="flex-1 px-3 overflow-y-auto overflow-x-hidden scrollbar-thin">
                         {menus.map((menu) => {
                             if (menu.children) {
                                 const isOpen = openDropdown === menu.name;

@@ -31,14 +31,21 @@ const LoginPage = () => {
     try {
       setLoading(true);
 
-      // ✅ Fixed: Use POST with body instead of GET with params
       const response = await api.get('/v1/auth/login', { params: { email, password } });
 
       const data = response.data;
+      
+      // ✅ FIXED: Use data.name (not firstName + lastName)
       localStorage.setItem('jwt_token', data?.token);
-      localStorage.setItem('name', data.firstName + ' ' + data.lastName);
+      localStorage.setItem('name', data.name);  // CHANGED THIS LINE
       localStorage.setItem('email', data.email);
-      localStorage.setItem('modules', JSON.stringify(data.role_permissions));
+      
+      // Handle modules safely
+      if (data.role_permissions) {
+        localStorage.setItem('modules', JSON.stringify(data.role_permissions));
+      } else {
+        localStorage.setItem('modules', JSON.stringify([]));
+      }
 
       toast.success('Login successful!');
       navigate('/dashboard');

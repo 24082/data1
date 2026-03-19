@@ -1,7 +1,6 @@
 import { LogOut, User, ChevronDown, Edit, CheckCircle, AlertCircle, X, Eye, EyeOff } from 'lucide-react';
-
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect, useContext,useRef } from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import api from "../../services/httpService";
 import { toast } from 'react-toastify';
 import { ThemeContext } from '../../constant/ThemeContext';
@@ -9,7 +8,7 @@ import { jwtDecode } from "jwt-decode";
 
 export default function AppBar() {
     const navigate = useNavigate();
-    const [templeName, setTempleName] = useState('');
+    // Removed templeName state since we don't have the API
     const { themeColor } = useContext(ThemeContext);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -18,7 +17,6 @@ export default function AppBar() {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [userEmail, setUserEmail] = useState('');
-    // const [userId, setUserId] = useState('');
     const [snackbar, setSnackbar] = useState({ open: false, message: '', type: '' });
     const [loading, setLoading] = useState(false);
     const [emailError, setEmailError] = useState(false);
@@ -30,25 +28,10 @@ export default function AppBar() {
         password: ''
     });
 
-    const profileDropdownRef=useRef(null)
-    useEffect(() => {
-        api.get('/v1/temple_setting/one')
-            .then(res => {
-                const data = res.data;
-                setTempleName(data.name);
-            })
-            .catch(err => {
-                console.error('Failed to load temple info:', err);
-            });
-   
-
-    // function logout() {
-    //     localStorage.clear();
-    //     navigate('/login');
-    // }
-        
-    }, []);
-
+    const profileDropdownRef = useRef(null)
+    
+    // REMOVED the useEffect that was calling /v1/temple_setting/one
+    
     useEffect(() => {
         const token = localStorage.getItem("jwt_token");
         if (!token) {
@@ -56,30 +39,35 @@ export default function AppBar() {
             return;
         }
 
-        const decodedToken = jwtDecode(token);
-        setEditingId(decodedToken.id);
+        try {
+            const decodedToken = jwtDecode(token);
+            setEditingId(decodedToken.id);
 
-        api.get('/v1/auth/me/?id=' + decodedToken.id)
-        .then(res => {
-        const data = res.data;
-        setFirstName(data.data.firstName);
-        setLastName(data.data.lastName);
-        setUserEmail(data.data.email);
-        setFormData({
-            firstName: data.data.firstName,
-            lastName: data.data.lastName,
-            email: data.data.email,
-            password: ""
-        });
-        })
-        .catch(err => {
-        console.error('Failed to load User:', err);
-        setSnackbar({
-            open: true,
-            message: "Failed to load user data",
-            severity: "error"
-        });
-        });
+            api.get('/v1/auth/me/?id=' + decodedToken.id)
+            .then(res => {
+                const data = res.data;
+                setFirstName(data.data.firstName);
+                setLastName(data.data.lastName);
+                setUserEmail(data.data.email);
+                setFormData({
+                    firstName: data.data.firstName,
+                    lastName: data.data.lastName,
+                    email: data.data.email,
+                    password: ""
+                });
+            })
+            .catch(err => {
+                console.error('Failed to load User:', err);
+                setSnackbar({
+                    open: true,
+                    message: "Failed to load user data",
+                    severity: "error"
+                });
+            });
+        } catch (error) {
+            console.error('Invalid token:', error);
+            navigate("/login");
+        }
     }, [navigate]);
 
     useEffect(() => {
@@ -123,62 +111,49 @@ export default function AppBar() {
         setEmailError(!validateEmail(email) && email.length > 0);
     };
 
-
-
     function handleLogoutConfirm() {
         localStorage.clear();
         navigate('/login');
     }
 
-     function handleEditProfile() {
-        // if (userId) {
-        //     api.get(`/v1/auth/user/${userId}`)
-        //         .then(res => {
-        //             const userData = res.data;
-        //             setFirstName(userData.firstName || '');
-        //             setLastName(userData.lastName || '');
-        //             setUserEmail(userData.email || '');
-        //         })
-        //         .catch(err => {
-        //             console.error('Failed to load user data:', err);
-        //             showSnackbar('Failed to load user data', 'error');
-        //         });
-        // }
+    function handleEditProfile() {
         setShowEditProfile(true);
         setShowProfileDropdown(false);
     }
 
     const updateUserProfile = async () => {
         if (emailError || !formData.firstName || !formData.lastName || !formData.email) {
-        showSnackbar("Please fill in all required fields correctly", "error");
-        return;
+            showSnackbar("Please fill in all required fields correctly", "error");
+            return;
         }
 
         try {
-        setLoading(true);
-        const payload = {
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-        };
+            setLoading(true);
+            const payload = {
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                email: formData.email,
+            };
 
-        if (formData.password.trim() !== "") payload.password = formData.password;
+            if (formData.password.trim() !== "") payload.password = formData.password;
 
-        await api.put(`/v1/auth/user/${editingId}`, payload);
+            await api.put(`/v1/auth/user/${editingId}`, payload);
 
-        setShowEditProfile(false);
-        setFormData({ ...formData, password: "" });
-        // showSnackbar("User updated successfully", "success");
-        toast.success("User updated successfully", { autoClose: 3000 });
+            // Update the displayed user info
+            setFirstName(formData.firstName);
+            setLastName(formData.lastName);
+            setUserEmail(formData.email);
+            
+            setShowEditProfile(false);
+            setFormData({ ...formData, password: "" });
+            toast.success("User updated successfully", { autoClose: 3000 });
         } catch (err) {
-        console.error("Profile update failed:", err);
-        toast.error(err.response?.data?.message || "Failed to update profile", { autoClose: 3000 });
-        // showSnackbar(err.response?.data?.message || "Failed to update profile", "error");
+            console.error("Profile update failed:", err);
+            toast.error(err.response?.data?.message || "Failed to update profile", { autoClose: 3000 });
         } finally {
-        setLoading(false);
+            setLoading(false);
         }
     };
-
 
     const cancelEditProfile = () => {
         setShowEditProfile(false);
@@ -187,10 +162,13 @@ export default function AppBar() {
 
     return (
         <>
-       
             <header className="h-16 w-full flex items-center px-6" style={{ backgroundColor: themeColor }}>
                 <div className="flex-1" />
-                <h1 className="text-lg font-semibold text-indigo-800 items-center">{templeName}</h1>
+                {/* Removed templeName display */}
+                <h1 className="text-lg font-semibold text-indigo-800 items-center">
+                    {/* You can put a static title here or leave empty */}
+                    Dashboard
+                </h1>
                 <div className="flex-1" />
                 
                 <div className="relative" ref={profileDropdownRef}>
@@ -256,6 +234,7 @@ export default function AppBar() {
                 </div>
             </header>
 
+            {/* Rest of your component remains the same */}
             {showEditProfile && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4">
@@ -314,26 +293,26 @@ export default function AppBar() {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Password
+                                    Password
                                 </label>
                                 <div className="relative">
-                                <input
-                                    type={showPassword ? "text" : "password"}
-                                    value={formData.password}
-                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-white/80 backdrop-blur-sm"
-                                    placeholder="Enter new password (leave blank to keep current)"
-                                    disabled={loading}
-                                    autoComplete="new-password"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
-                                    disabled={loading}
-                                >
-                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                </button>
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        value={formData.password}
+                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-white/80 backdrop-blur-sm"
+                                        placeholder="Enter new password (leave blank to keep current)"
+                                        disabled={loading}
+                                        autoComplete="new-password"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                                        disabled={loading}
+                                    >
+                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
                                 </div>
                                 <p className="text-gray-500 text-xs mt-1">Leave blank to keep your current password</p>
                             </div>
@@ -351,7 +330,6 @@ export default function AppBar() {
                                 disabled={loading || emailError || !formData.firstName || !formData.lastName || !formData.email}
                                 className="px-5 py-2 text-white rounded-lg hover:brightness-90 transition font-medium flex items-center gap-2"
                                 style={{ backgroundColor: themeColor }}
-
                             >
                                 <Edit className="w-4 h-4" />
                                 Update Profile

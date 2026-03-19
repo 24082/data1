@@ -1,13 +1,28 @@
 import React, { useEffect, useState, useCallback } from "react";
-import CountUp from "react-countup";
 import api from "../services/httpService";
-import { ShoppingCart, Package, Calendar, Zap, CalendarDays, MapPin, TrendingUp, BarChart2, Tag, LayoutGrid } from "lucide-react";
+import {
+  ShoppingCart, Package, Calendar, Zap, CalendarRange,
+  MapPin, TrendingUp, BarChart2, Tag, Grid
+} from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from "recharts";
 
 const COLORS = ["#ef4444", "#9333ea", "#3b82f6"];
+
+// ✅ Native number formatter — zero external dependencies, zero import errors
+const formatNumber = (value, decimals = 0) => {
+  if (value === null || value === undefined || isNaN(value)) return "0";
+  return Number(value).toLocaleString("en-IN", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+};
+
+const StatValue = ({ value, decimals = 0 }) => (
+  <span>{formatNumber(value, decimals)}</span>
+);
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
@@ -48,7 +63,6 @@ const Dashboard = () => {
       params.append("date", today);
       if (locationId) params.append("locationId", locationId);
 
-      // ✅ FIXED API URL
       const res = await api.get(`/api/dashboard/getAllDashboard?${params.toString()}`);
       const dashboardData = res.data?.data;
 
@@ -75,7 +89,6 @@ const Dashboard = () => {
     setSelectedLocation(value === "all" ? null : value);
   };
 
-  // ✅ Added totalAddons and totalCategories from your API response
   const statCards = [
     {
       label: "Today's Orders",
@@ -119,7 +132,7 @@ const Dashboard = () => {
       color: "border-purple-400",
       labelColor: "text-purple-600",
       iconBg: "bg-purple-100",
-      icon: <CalendarDays className="w-6 h-6 text-purple-600" />,
+      icon: <CalendarRange className="w-6 h-6 text-purple-600" />,
       decimals: 2,
     },
     {
@@ -137,7 +150,7 @@ const Dashboard = () => {
       color: "border-pink-400",
       labelColor: "text-pink-600",
       iconBg: "bg-pink-100",
-      icon: <LayoutGrid className="w-6 h-6 text-pink-600" />,
+      icon: <Grid className="w-6 h-6 text-pink-600" />,
       decimals: 0,
     },
   ];
@@ -175,7 +188,7 @@ const Dashboard = () => {
           <p className="text-sm text-gray-500 mt-1">Welcome back! Here's what's happening today.</p>
         </div>
 
-        {/* Location Filter */}
+        {/* ✅ Fix: Static option has NO key, mapped options have String(loc._id) as key */}
         <div className="flex items-center gap-2">
           <MapPin className="w-4 h-4 text-gray-500" />
           <select
@@ -185,7 +198,9 @@ const Dashboard = () => {
           >
             <option value="all">All Locations</option>
             {locations.map((loc) => (
-              <option key={loc._id} value={loc._id}>{loc.name}</option>
+              <option key={String(loc._id)} value={loc._id}>
+                {loc.name}
+              </option>
             ))}
           </select>
         </div>
@@ -212,12 +227,7 @@ const Dashboard = () => {
                     {item.label}
                   </p>
                   <p className="text-2xl font-bold text-gray-800">
-                    <CountUp
-                      end={item.value}
-                      duration={1.5}
-                      separator=","
-                      decimals={item.decimals}
-                    />
+                    <StatValue value={item.value} decimals={item.decimals} />
                   </p>
                 </div>
                 <div className={`${item.iconBg} p-3 rounded-full`}>
@@ -232,19 +242,19 @@ const Dashboard = () => {
             <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
               <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Overall Orders</p>
               <p className="text-2xl font-bold text-gray-800">
-                <CountUp end={stats?.overall?.totalOrders || 0} duration={1.5} separator="," />
+                <StatValue value={stats?.overall?.totalOrders || 0} />
               </p>
             </div>
             <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
               <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Overall Sales (₹)</p>
               <p className="text-2xl font-bold text-gray-800">
-                <CountUp end={stats?.overall?.totalAmount || 0} duration={1.5} separator="," decimals={2} />
+                <StatValue value={stats?.overall?.totalAmount || 0} decimals={2} />
               </p>
             </div>
             <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
               <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Avg Order Value (₹)</p>
               <p className="text-2xl font-bold text-gray-800">
-                <CountUp end={stats?.overall?.averageOrderValue || 0} duration={1.5} separator="," decimals={2} />
+                <StatValue value={stats?.overall?.averageOrderValue || 0} decimals={2} />
               </p>
             </div>
           </div>
